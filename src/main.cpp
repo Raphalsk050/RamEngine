@@ -1,8 +1,8 @@
 #include "engine/core/engine.h"
 
 int main() {
-	Engine engine;
-	engine.init();
-	engine.run();
+	Engine* engine = new Engine();
+	engine->init();
+	engine->run();
 	return 0;
 }

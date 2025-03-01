@@ -1,5 +1,4 @@
 #include "engine.h"
-#include "modules/render_module.h"
 #include <iostream>
 
 void Engine::init() {
@@ -10,7 +9,7 @@ void Engine::init() {
 	}
 
 	// Criar janela
-	window = glfwCreateWindow(800, 600, "RamEngine", NULL, NULL);
+	window = glfwCreateWindow(800, 600, "Minha Engine", NULL, NULL);
 	if (!window) {
 		std::cerr << "Falha ao criar janela GLFW" << std::endl;
 		glfwTerminate();
@@ -20,14 +19,14 @@ void Engine::init() {
 	// Definir contexto OpenGL
 	glfwMakeContextCurrent(window);
 
-	// Inicializar módulo de renderização
-	RenderModule::init();
+	// Inicializar módulo de renderização usando a instância
+	renderModule.init();
 }
 
 void Engine::run() {
 	while (!glfwWindowShouldClose(window)) {
-		// Renderizar a cena
-		RenderModule::render();
+		// Renderizar a cena usando a instância
+		renderModule.render();
 
 		// Trocar buffers e processar eventos
 		glfwSwapBuffers(window);
