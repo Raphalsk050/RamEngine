@@ -2,28 +2,29 @@
 #include <SDL2/SDL_vulkan.h>
 #include <SDL2/SDL_syswm.h>
 #include <vulkan/vulkan.h>
-
-// Headers do Filament
 #include <filament/Engine.h>
 #include <filament/Renderer.h>
+#include <filament/Viewport.h>
 #include <filament/SwapChain.h>
-#include <filament/Scene.h>
+#include <backend/BufferDescriptor.h>
 #include <filament/View.h>
 #include <filament/Skybox.h>
+#include <filament/VertexBuffer.h>
+#include <filament/IndexBuffer.h>
+#include <filament/Scene.h>
 #include <filament/Camera.h>
+#include <filament/FilamentAPI.h>
 #include <utils/EntityManager.h>
-#include <math/vec4.h>
-#include <math/vec3.h>
+#include <utils/Entity.h>
+#include <chrono> // Required for std::chrono and sleep_for
+#include <thread> // Required for std::this_thread
 
 #undef Success
 #include <filament/LightManager.h>
 #include <filament/RenderableManager.h>
 
-// change this to false if you want to change from Vulkan to OpenGL
-#define USE_VULKAN true
-
-using namespace filament;
 using namespace utils;
+using namespace filament;
 
 void* GetNativeWindow(SDL_Window* sdlWindow) {
     SDL_SysWMinfo wmi;
@@ -33,52 +34,52 @@ void* GetNativeWindow(SDL_Window* sdlWindow) {
     return reinterpret_cast<void*>(win);
 }
 
-int main(int argc, char** argv) {
+int main() {
+
+    int newWidth = 800;
+    int newHeight = 600;
+
     setenv("VK_INSTANCE_LAYERS", "VK_LAYER_KHRONOS_validation", 1);
     setenv("SDL_VIDEODRIVER", "x11", 1);
     setenv("FILAMENT_DEBUG", "1", 1);
     setenv("FILAMENT_LOG_LEVEL", "verbose", 1);
 
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS) < 0) {
-        SDL_Log("Error to initialize SDL: %s", SDL_GetError());
-        return -1;
-    }
+    // Create the engine
+    filament::Engine* engine = filament::Engine::create();
 
+    // Create a native window (using SDL2 or another windowing library)
     SDL_Window* window = SDL_CreateWindow("Filament Demo",
         SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
         800, 600, SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE);
 
-    if (!window) {
-        SDL_Log("Failed to create SDL window: %s", SDL_GetError());
-        SDL_Quit();
-        return -1;
-    }
-
-    // create filament engine
-    Engine* engine;
-    if (USE_VULKAN) {
-        engine = Engine::create(backend::Backend::VULKAN);
-    } else {
-        engine = Engine::create(backend::Backend::OPENGL);
-    }
-
-    // create swap chain
+    // Create a swap chain
     SwapChain* swapChain = engine->createSwapChain(GetNativeWindow(window));
 
-    Renderer* renderer = engine->createRenderer();
-    renderer->setClearOptions({.clearColor = {0, 0, 0, 0}, .clear = true});
+    // Create a renderer
+    filament::Renderer* renderer = engine->createRenderer();
 
-    // create Scene and View
-    Scene* scene = engine->createScene();
-    View* view = engine->createView();
-    view->setScene(scene);
+    // Create a view
+    filament::View* view = engine->createView();
+
+    // Renderizar um frame inicial logo após criar o SwapChain (NOVO BLOCO)
+    if (!renderer->beginFrame(swapChain)) {
+        SDL_Log("ERROR: beginFrame() falhou no frame inicial (após criação do SwapChain)!");
+    } else {
+        renderer->render(view);
+        renderer->endFrame();
+        SDL_Log("INFO: Frame inicial renderizado após criação do SwapChain.");
+    }
 
     // create camera
     Camera* camera = engine->createCamera(EntityManager::get().create());
     camera->setProjection(45.0f, 800.0f / 600.0f, 0.1f, 100.0f);
     camera->lookAt({0, 0, 10}, {0, 0, 0}, {0, 1, 0});
+
     view->setCamera(camera);
 
+    // Create a scene
+    filament::Scene* scene = engine->createScene();
+    view->setScene(scene);
 
     // create Skybox
     Skybox* skybox = Skybox::Builder()
@@ -92,27 +93,46 @@ int main(int argc, char** argv) {
         .color(math::float3(1.0f, 1.0f, 1.0f))
         .intensity(100000.0f)
         .direction(math::float3(0.0f, -1.0f, -1.0f))
-        .build(*engine, light);setenv("VK_INSTANCE_LAYERS", "VK_LAYER_KHRONOS_validation", 1);
+        .build(*engine, light);
     scene->addEntity(light);
 
-
-    SDL_Log("initializing render loop");
-
+    // Main rendering loop
     bool running = true;
     SDL_Event event;
-
     while (running) {
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_QUIT) {
                 running = false;
+            }
+            if (event.window.event == SDL_WINDOWEVENT_RESIZED) {
+                SDL_Log("INFO: Janela redimensionada. Reconstruindo SwapChain e Viewport.");
+                newWidth = event.window.data1;
+                newHeight = event.window.data2;
+
+                // 1. Destruir SwapChain antigo e criar novo
+                engine->destroy(swapChain);
+                swapChain = engine->createSwapChain(GetNativeWindow(window));
+
+                // 2. Ajustar o viewport da View para o novo tamanho da janela
+                view->setViewport(Viewport(0,0,newWidth,newHeight));
+
+                // 3. Ajustar a proporção da câmera (projection)
+                camera->setProjection(45.0f, (float)newWidth / (float)newHeight, 0.1f, 100.0f);
+
+                SDL_Log("INFO: Reconstrução e ajustes completos.");
             }
         }
 
         SDL_Log("Rendering frame");
 
         if (!renderer->beginFrame(swapChain)) {
-            SDL_Log("ERROR: beginFrame() failed!");
+            SDL_Log("ERROR: beginFrame() falhou!");
+            // Reconstruir o SwapChain quando beginFrame() falha
+            engine->destroy(swapChain); // Destruir o SwapChain antigo
+            swapChain = engine->createSwapChain(GetNativeWindow(window)); // Criar um novo
+            SDL_Log("INFO: SwapChain reconstruído."); // Log para verificar a reconstrução
         } else {
+            view->setViewport(Viewport(0,0,newWidth,newHeight));
             renderer->render(view);
             renderer->endFrame();
         }
@@ -120,14 +140,16 @@ int main(int argc, char** argv) {
         SDL_Delay(16);
     }
 
-    SDL_Log("🛑 Quiting application");
+    std::this_thread::sleep_for(std::chrono::milliseconds(100)); // ADDED DELAY HERE BEFORE CLEANUP
 
+    // Clean up
     engine->destroy(skybox);
+    engine->destroy(scene); // Destruir Scene ANTES de View
     engine->destroy(view);
-    engine->destroy(scene);
     engine->destroy(renderer);
     engine->destroy(swapChain);
-    Engine::destroy(&engine);
+    EntityManager::get().destroy(light); // Destroy the light entity!
+    Engine::destroy(&engine); // Engine SEMPRE por último
     SDL_DestroyWindow(window);
     SDL_Quit();
 

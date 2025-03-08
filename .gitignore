@@ -1,1 +1,4 @@
-/build/
+/bazel-*
+.clwb
+.vscode
+.vs

@@ -1,8 +1,10 @@
 cc_binary(
     name = "filament_demo",
     srcs = ["main.cpp"],
-    deps = ["//third_party/filament:filament"],
-    copts = ["-std=c++17", "-stdlib=libc++"],
+    copts = [
+        "-std=c++17",
+        "-stdlib=libc++",
+    ],
     linkopts = [
         "-lc++",
         "-ldl",
@@ -11,5 +13,9 @@ cc_binary(
         "-lSDL2",
         "-lvulkan",
     ],
+    deps = [
+        "//src/Material:material_utils",
+        "//src/MeshUtils:mesh_utils",
+        "//third_party/filament",
+    ],
 )
-

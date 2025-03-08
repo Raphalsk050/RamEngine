@@ -1,0 +1,4 @@
+workspace(
+    name = "ram_engine",
+    version = "0.0.1",
+)
