@@ -1,0 +1,15 @@
+cc_binary(
+    name = "filament_demo",
+    srcs = ["main.cpp"],
+    deps = ["//third_party/filament:filament"],
+    copts = ["-std=c++17", "-stdlib=libc++"],
+    linkopts = [
+        "-lc++",
+        "-ldl",
+        "-lpthread",
+        "-lxcb",
+        "-lSDL2",
+        "-lvulkan",
+    ],
+)
+
