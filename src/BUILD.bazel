@@ -1,3 +1,10 @@
+load("//:ram_rules.bzl", "ram_material")
+
+ram_material(
+    name = "simple_material",
+    src = "simple_material.mat",
+)
+
 cc_binary(
     name = "filament_demo",
     srcs = ["main.cpp"],
@@ -14,6 +21,7 @@ cc_binary(
         "-lvulkan",
     ],
     deps = [
+        ":simple_material",
         "//src/Material:material_utils",
         "//src/MeshUtils:mesh_utils",
         "//third_party/filament",
