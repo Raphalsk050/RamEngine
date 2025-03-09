@@ -20,7 +20,7 @@
 #include <chrono> // Required for std::chrono and sleep_for
 #include <thread> // Required for std::this_thread
 
-#include "MeshUtils/shape_renderer.h"
+#include "mesh_utils/shape_renderer.h"
 
 #undef Success
 #include <filament/LightManager.h>
