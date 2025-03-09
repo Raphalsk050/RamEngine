@@ -6,9 +6,8 @@
 #include <utils/EntityManager.h>
 #include <utils/Entity.h>
 #include <vector>
-#include <fstream> // Para ifstream - necessário para carregar o material padrão
-
-#include <SDL2/SDL.h> // Para SDL_Log - pode remover se tiver outra forma de log
+#include <fstream>
+#include <SDL2/SDL.h>
 
 using namespace filament;
 using namespace utils;
@@ -16,40 +15,68 @@ using namespace utils;
 namespace utils {
 	namespace filamentutils {
 		ShapeRenderer::ShapeRenderer(Engine *engine, Scene *scene) : engine_(engine), scene_(scene) {
-			// --- Dados do Cubo --- (já existente - não altere)
+			// --- Dados do Cubo ---
 			float verticesCube[] = {
-				/* ... vertices do cubo ... */
-			}; // (Código do cubo anterior - não altere)
+				// Frente
+				-0.5f, -0.5f, 0.5f, // 0
+				0.5f, -0.5f, 0.5f, // 1
+				0.5f, 0.5f, 0.5f, // 2
+				-0.5f, 0.5f, 0.5f, // 3
+				// Trás
+				-0.5f, -0.5f, -0.5f, // 4
+				0.5f, -0.5f, -0.5f, // 5
+				0.5f, 0.5f, -0.5f, // 6
+				-0.5f, 0.5f, -0.5f // 7
+			};
 			uint16_t indicesCube[] = {
-				/* ... indices do cubo ... */
-			}; // (Código do cubo anterior - não altere)
+				// Frente
+				0, 1, 2, 2, 3, 0,
+				// Direita
+				1, 5, 6, 6, 2, 1,
+				// Trás
+				5, 4, 7, 7, 6, 5,
+				// Esquerda
+				4, 0, 3, 3, 7, 4,
+				// Topo
+				3, 2, 6, 6, 7, 3,
+				// Fundo
+				4, 5, 1, 1, 0, 4
+			};
 
-			// --- Dados da Linha (já existente - não altere) ---
-			vertexBufferLine_ = VertexBuffer::Builder() /* ... */.build(*engine_); // (Código anterior - não altere)
-			indexBufferLine_ = IndexBuffer::Builder() /* ... */.build(*engine_); // (Código anterior - não altere)
-			vertexBufferLine_->setBufferAt(*engine_, 0, VertexBuffer::BufferDescriptor(nullptr, 0));
-			// (Código anterior - não altere)
-			indexBufferLine_->setBuffer(*engine_, IndexBuffer::BufferDescriptor(nullptr, 0));
-			// (Código anterior - não altere)
-
-
-			// --- Criar VertexBuffer e IndexBuffer para o Cubo (já existente - não altere) ---
-			vertexBufferCube_ = VertexBuffer::Builder() /* ... */.build(*engine_); // (Código anterior - não altere)
+			// --- Criar VertexBuffer e IndexBuffer para o Cubo ---
+			vertexBufferCube_ = VertexBuffer::Builder()
+					.vertexCount(8)
+					.bufferCount(1)
+					.attribute(VertexAttribute::POSITION, 0, VertexBuffer::AttributeType::FLOAT3, 0, 12)
+					.build(*engine_);
 			vertexBufferCube_->setBufferAt(*engine_, 0,
 			                               VertexBuffer::BufferDescriptor(verticesCube, sizeof(verticesCube)));
-			// (Código anterior - não altere)
-			indexBufferCube_ = IndexBuffer::Builder() /* ... */.build(*engine_); // (Código anterior - não altere)
+
+			indexBufferCube_ = IndexBuffer::Builder()
+					.indexCount(36)
+					.bufferType(IndexBuffer::IndexType::USHORT)
+					.build(*engine_);
 			indexBufferCube_->setBuffer(*engine_, IndexBuffer::BufferDescriptor(indicesCube, sizeof(indicesCube)));
-			// (Código anterior - não altere)
 
+			// --- Criar VertexBuffer e IndexBuffer para Linhas ---
+			vertexBufferLine_ = VertexBuffer::Builder()
+					.vertexCount(2) // Inicialmente para uma linha, será atualizado dinamicamente
+					.bufferCount(1)
+					.attribute(VertexAttribute::POSITION, 0, VertexBuffer::AttributeType::FLOAT3, 0, 28)
+					.attribute(VertexAttribute::COLOR, 0, VertexBuffer::AttributeType::FLOAT4, 12, 28)
+					.build(*engine_);
 
-			// --- Criar Material Padrão para Linhas de Debug (NOVO) ---
-			std::ifstream materialFileStream("PATH_TO_YOUR_UNLIT_COLOR.filamat", std::ios::binary | std::ios::in);
-			// <-- ***SUBSTITUA PELO CAMINHO DO SEU ARQUIVO .filamat***
+			indexBufferLine_ = IndexBuffer::Builder()
+					.indexCount(2) // Inicialmente para uma linha
+					.bufferType(IndexBuffer::IndexType::USHORT)
+					.build(*engine_);
+
+			// --- Carregar Material Padrão para Linhas ---
+			std::ifstream materialFileStream("../src/compiled_materials/simple_material.filamat",
+			                                 std::ios::binary | std::ios::in);
 			if (!materialFileStream.is_open()) {
 				SDL_Log("ERRO: Falha ao abrir o arquivo .filamat do material padrão para linhas!");
-				// ***TODO:***  Tratamento de erro mais robusto aqui, talvez retornar um erro ou usar um material fallback embutido.
-				return; // Retorna sem criar o material se o arquivo não for encontrado (tratamento de erro básico)
+				return; // Tratamento básico de erro
 			}
 			materialFileStream.seekg(0, std::ifstream::end);
 			size_t materialFileSize = materialFileStream.tellg();
@@ -59,65 +86,104 @@ namespace utils {
 			materialFileStream.close();
 
 			Material *material = Material::Builder()
+					.package(materialData, materialFileSize)
 					.build(*engine_);
 			delete[] materialData;
 
 			if (material) {
 				defaultLineMaterial_ = material->createInstance();
-				defaultLineMaterial_->setParameter("baseColor", math::float4(0.0f, 1.0f, 0.0f, 1.0f));
-				// Cor verde padrão
+				defaultLineMaterial_->setParameter("BaseColor", math::float4(0.0f, 1.0f, 0.0f, 1.0f)); // Verde
 			} else {
 				SDL_Log("ERRO: Falha ao criar instância do material padrão para linhas!");
-				// ***TODO:*** Tratamento de erro mais robusto - o que fazer se o material não for criado? Usar um fallback?
 			}
 		}
 
 		ShapeRenderer::~ShapeRenderer() {
-			// Limpar recursos do cubo (já existente - não altere)
 			if (vertexBufferCube_) engine_->destroy(vertexBufferCube_);
 			if (indexBufferCube_) engine_->destroy(indexBufferCube_);
-
-			// Limpar recursos de linha (já existente - não altere)
 			if (vertexBufferLine_) engine_->destroy(vertexBufferLine_);
 			if (indexBufferLine_) engine_->destroy(indexBufferLine_);
-
-			// Limpar Material Padrão para Linhas de Debug (NOVO)
 			if (defaultLineMaterial_) engine_->destroy(defaultLineMaterial_);
 		}
 
-
-		Entity ShapeRenderer::createCube(const MaterialInstance *materialInstance) {
-			/* ... código createCube já existente - não altere ... */
-		} // (Código createCube anterior - não altere)
-		Entity ShapeRenderer::createLine(const math::float3 &p1, const math::float3 &p2,
-		                                 const MaterialInstance *materialInstance) {
-			/* ... código createLine com material já existente - não altere ... */
-		} // (Código createLine com material anterior - não altere)
-		Entity ShapeRenderer::createLineList(const std::vector<math::float3> &points,
-		                                     const MaterialInstance *materialInstance) {
-			/* ... código createLineList com material já existente - não altere ... */
-		} // (Código createLineList com material anterior - não altere)
-
-
-		// --- NOVOS MÉTODOS createLine e createLineList SEM materialInstance (para debug lines) ---
-
-		Entity ShapeRenderer::createLine(const math::float3 &p1, const math::float3 &p2) {
-			if (!defaultLineMaterial_) {
-				SDL_Log("AVISO: Material padrão para linhas não inicializado. Impossível criar linha de debug.");
-				return EntityManager::get().create(); // Retorna entidade vazia se material padrão não existir
-			}
-			return createLine(p1, p2, defaultLineMaterial_); // Chama a versão com material, usando o material padrão
+		Node* ShapeRenderer::createCube(const MaterialInstance *materialInstance) {
+			Node* node = new Node(engine_);
+			RenderableManager::Builder(1)  // 1 geometria
+				.geometry(0, RenderableManager::PrimitiveType::TRIANGLES, vertexBufferCube_, indexBufferCube_, 0, 36)
+				.material(0, materialInstance)
+				.build(*engine_, node->getEntity());
+			scene_->addEntity(node->getEntity());
+			return node;
 		}
 
+		Node* ShapeRenderer::createLine(const math::float3 &p1, const math::float3 &p2,
+		                               const MaterialInstance *materialInstance) {
+			// Configurar os dados da linha
+			float vertices[] = {
+				p1.x, p1.y, p1.z, 1.0f, 1.0f, 1.0f, 1.0f,  // Ponto 1 (x, y, z, r, g, b, a)
+				p2.x, p2.y, p2.z, 1.0f, 1.0f, 1.0f, 1.0f   // Ponto 2
+			};
+			uint16_t indices[] = {0, 1};
 
-		Entity ShapeRenderer::createLineList(const std::vector<math::float3> &points) {
+			vertexBufferLine_->setBufferAt(*engine_, 0, VertexBuffer::BufferDescriptor(vertices, sizeof(vertices)));
+			indexBufferLine_->setBuffer(*engine_, IndexBuffer::BufferDescriptor(indices, sizeof(indices)));
+
+			Node* node = new Node(engine_);
+			RenderableManager::Builder(1)
+				.geometry(0, RenderableManager::PrimitiveType::LINES, vertexBufferLine_, indexBufferLine_, 0, 2)
+				.material(0, materialInstance)
+				.build(*engine_, node->getEntity());
+			scene_->addEntity(node->getEntity());
+			return node;
+		}
+
+		Node* ShapeRenderer::createLineList(const std::vector<math::float3> &points,
+		                                   const MaterialInstance *materialInstance) {
+			if (points.size() < 2) return nullptr;
+
+			std::vector<float> vertices;
+			std::vector<uint16_t> indices;
+			for (size_t i = 0; i < points.size(); ++i) {
+				vertices.push_back(points[i].x);
+				vertices.push_back(points[i].y);
+				vertices.push_back(points[i].z);
+				vertices.push_back(1.0f);  // r
+				vertices.push_back(1.0f);  // g
+				vertices.push_back(1.0f);  // b
+				vertices.push_back(1.0f);  // a
+				if (i > 0) {
+					indices.push_back(i - 1);
+					indices.push_back(i);
+				}
+			}
+
+			vertexBufferLine_->setBufferAt(*engine_, 0, VertexBuffer::BufferDescriptor(vertices.data(), vertices.size() * sizeof(float)));
+			indexBufferLine_->setBuffer(*engine_, IndexBuffer::BufferDescriptor(indices.data(), indices.size() * sizeof(uint16_t)));
+
+			Node* node = new Node(engine_);
+			RenderableManager::Builder(1)
+				.geometry(0, RenderableManager::PrimitiveType::LINES, vertexBufferLine_, indexBufferLine_, 0, indices.size())
+				.material(0, materialInstance)
+				.build(*engine_, node->getEntity());
+			scene_->addEntity(node->getEntity());
+			return node;
+		}
+
+		Node* ShapeRenderer::createLine(const math::float3 &p1, const math::float3 &p2) {
+			if (!defaultLineMaterial_) {
+				SDL_Log("AVISO: Material padrão para linhas não inicializado. Impossível criar linha de debug.");
+				return nullptr; // Retorna entidade nula
+			}
+			return createLine(p1, p2, defaultLineMaterial_);
+		}
+
+		Node* ShapeRenderer::createLineList(const std::vector<math::float3> &points) {
 			if (!defaultLineMaterial_) {
 				SDL_Log(
 					"AVISO: Material padrão para linhas não inicializado. Impossível criar lista de linhas de debug.");
-				return EntityManager::get().create(); // Retorna entidade vazia se material padrão não existir
+				return nullptr; // Retorna entidade nula
 			}
 			return createLineList(points, defaultLineMaterial_);
-			// Chama a versão com material, usando o material padrão
 		}
 	} // namespace filamentutils
 } // namespace utils

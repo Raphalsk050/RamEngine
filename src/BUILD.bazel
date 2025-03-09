@@ -24,6 +24,7 @@ cc_binary(
         ":simple_material",
         "//src/Material:material_utils",
         "//src/MeshUtils:mesh_utils",
+        "//src/core:base",
         "//third_party/filament",
     ],
 )

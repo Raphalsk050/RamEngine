@@ -5,6 +5,7 @@
 #include <filament/Engine.h>
 #include <filament/Renderer.h>
 #include <filament/Viewport.h>
+#include <filament/TransformManager.h>
 #include <filament/SwapChain.h>
 #include <backend/BufferDescriptor.h>
 #include <filament/View.h>
@@ -19,9 +20,13 @@
 #include <chrono> // Required for std::chrono and sleep_for
 #include <thread> // Required for std::this_thread
 
+#include "MeshUtils/shape_renderer.h"
+
 #undef Success
 #include <filament/LightManager.h>
 #include <filament/RenderableManager.h>
+
+#include "core/base/node.h"
 
 using namespace utils;
 using namespace filament;
@@ -45,7 +50,8 @@ int main() {
     setenv("FILAMENT_LOG_LEVEL", "verbose", 1);
 
     // Create the engine
-    filament::Engine* engine = filament::Engine::create();
+    Engine* engine = Engine::create();
+    TransformManager& transformManager = engine->getTransformManager();
 
     // Create a native window (using SDL2 or another windowing library)
     SDL_Window* window = SDL_CreateWindow("Filament Demo",
@@ -56,12 +62,12 @@ int main() {
     SwapChain* swapChain = engine->createSwapChain(GetNativeWindow(window));
 
     // Create a renderer
-    filament::Renderer* renderer = engine->createRenderer();
+    Renderer* renderer = engine->createRenderer();
 
     // Create a view
-    filament::View* view = engine->createView();
+    View* view = engine->createView();
 
-    // Renderizar um frame inicial logo após criar o SwapChain (NOVO BLOCO)
+    // renderers a new frame instantly after the swap chain creation
     if (!renderer->beginFrame(swapChain)) {
         SDL_Log("ERROR: beginFrame() falhou no frame inicial (após criação do SwapChain)!");
     } else {
@@ -71,15 +77,13 @@ int main() {
     }
 
     // create camera
-    Camera* camera = engine->createCamera(EntityManager::get().create());
+    Node* camera_node = new Node(engine);
+    Camera* camera = engine->createCamera(camera_node->getEntity());
     camera->setProjection(45.0f, 800.0f / 600.0f, 0.1f, 100.0f);
     camera->lookAt({0, 0, 10}, {0, 0, 0}, {0, 1, 0});
 
-    view->setCamera(camera);
-
     // Create a scene
-    filament::Scene* scene = engine->createScene();
-    view->setScene(scene);
+    Scene* scene = engine->createScene();
 
     // create Skybox
     Skybox* skybox = Skybox::Builder()
@@ -88,13 +92,20 @@ int main() {
     scene->setSkybox(skybox);
 
     // create directional light
-    Entity light = EntityManager::get().create();
+    Node* light_node = new Node(engine);
+
     LightManager::Builder(LightManager::Type::DIRECTIONAL)
         .color(math::float3(1.0f, 1.0f, 1.0f))
         .intensity(100000.0f)
         .direction(math::float3(0.0f, -1.0f, -1.0f))
-        .build(*engine, light);
-    scene->addEntity(light);
+        .build(*engine, light_node->getEntity());
+
+    auto shape_renderer = filamentutils::ShapeRenderer(engine, scene);
+    //Node* node = shape_renderer.createLine(math::float3(0.0f, 0.0f, 13.0f), math::float3(1.0f, 1.0f, 14.0f));
+
+    view->setCamera(camera);
+    view->setScene(scene);
+    scene->addEntity(light_node->getEntity());
 
     // Main rendering loop
     bool running = true;
@@ -148,7 +159,7 @@ int main() {
     engine->destroy(view);
     engine->destroy(renderer);
     engine->destroy(swapChain);
-    EntityManager::get().destroy(light); // Destroy the light entity!
+    EntityManager::get().destroy(light_node->getEntity()); // Destroy the light entity!
     Engine::destroy(&engine); // Engine SEMPRE por último
     SDL_DestroyWindow(window);
     SDL_Quit();

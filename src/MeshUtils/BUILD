@@ -3,5 +3,8 @@ cc_library(
     srcs = ["shape_renderer.cpp"],
     hdrs = ["shape_renderer.h"],
     visibility = ["//visibility:public"],
-    deps = ["//third_party/filament"],
+    deps = [
+        "//src/core:base",
+        "//third_party/filament",
+    ],
 )

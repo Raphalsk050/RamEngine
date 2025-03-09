@@ -1,5 +1,9 @@
 material {
   name : "Simple_material",
+  parameters: [
+  { type: float3, name: BaseColor }
+  ],
+  requires: [ uv0 ],
   blending: transparent,
   depthWrite: false,
   shadingModel: unlit,
@@ -7,6 +11,6 @@ material {
 fragment {
   void material(inout MaterialInputs material) {
     prepareMaterial(material);
-    material.baseColor = vec4(1.0);
+    material.baseColor = vec4(materialParams.BaseColor,1.0);
   }
 }

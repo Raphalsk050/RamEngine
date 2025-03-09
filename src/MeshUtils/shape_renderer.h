@@ -10,6 +10,8 @@
 #include <utils/Entity.h>
 #include <vector>
 
+#include "src/core/base/node.h"
+
 using namespace filament;
 
 namespace utils {
@@ -20,11 +22,14 @@ namespace utils {
 			ShapeRenderer(filament::Engine* engine, filament::Scene* scene);
 			~ShapeRenderer();
 
-			utils::Entity createCube(const filament::MaterialInstance* materialInstance);
-			utils::Entity createLine(const math::float3& p1, const math::float3& p2, const filament::MaterialInstance* materialInstance); // Método com material (existente)
-			utils::Entity createLine(const math::float3& p1, const math::float3& p2); // Novo método para linha de debug (sem material)
-			utils::Entity createLineList(const std::vector<math::float3>& points, const filament::MaterialInstance* materialInstance); // Método com material (existente)
-			utils::Entity createLineList(const std::vector<math::float3>& points); // Novo método para lista de linhas de debug (sem material)
+			Node* createCube(const filament::MaterialInstance *materialInstance);
+
+			Node* createLine(const math::float3 &p1, const math::float3 &p2,
+			                const filament::MaterialInstance *materialInstance); // Método com material (existente)
+			Node* createLine(const math::float3 &p1, const math::float3 &p2); // Novo método para linha de debug (sem material)
+			Node* createLineList(const std::vector<math::float3> &points,
+			                    const filament::MaterialInstance *materialInstance); // Método com material (existente)
+			Node* createLineList(const std::vector<math::float3> &points); // Novo método para lista de linhas de debug (sem material)
 
 
 		private:
