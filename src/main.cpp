@@ -102,10 +102,13 @@ int main() {
 
     auto shape_renderer = filamentutils::ShapeRenderer(engine, scene);
     //Node* node = shape_renderer.createLine(math::float3(0.0f, 0.0f, 13.0f), math::float3(1.0f, 1.0f, 14.0f));
+    auto triangle = shape_renderer.createTriangle();
+
 
     view->setCamera(camera);
     view->setScene(scene);
     scene->addEntity(light_node->getEntity());
+    scene->addEntity(triangle->getEntity());
 
     // Main rendering loop
     bool running = true;

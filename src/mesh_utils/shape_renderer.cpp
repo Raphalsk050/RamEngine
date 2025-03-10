@@ -12,6 +12,19 @@
 using namespace filament;
 using namespace utils;
 
+struct Vertex {
+	filament::math::float2 position;
+	uint32_t color;
+};
+
+static const Vertex TRIANGLE_VERTICES[3] = {
+	{{1, 0}, 0xffff0000u},
+	{{cos(M_PI * 2 / 3), sin(M_PI * 2 / 3)}, 0xff00ff00u},
+	{{cos(M_PI * 4 / 3), sin(M_PI * 4 / 3)}, 0xff0000ffu},
+};
+
+static constexpr uint16_t TRIANGLE_INDICES[3] = {0, 1, 2};
+
 namespace utils {
 	namespace filamentutils {
 		ShapeRenderer::ShapeRenderer(Engine *engine, Scene *scene) : engine_(engine), scene_(scene) {
@@ -72,7 +85,7 @@ namespace utils {
 					.build(*engine_);
 
 			// --- Carregar Material Padrão para Linhas ---
-			std::ifstream materialFileStream("../src/compiled_materials/simple_material.filamat",
+			std::ifstream materialFileStream("compiled_materials/simple_material.filamat",
 			                                 std::ios::binary | std::ios::in);
 			if (!materialFileStream.is_open()) {
 				SDL_Log("ERRO: Falha ao abrir o arquivo .filamat do material padrão para linhas!");
@@ -106,39 +119,40 @@ namespace utils {
 			if (defaultLineMaterial_) engine_->destroy(defaultLineMaterial_);
 		}
 
-		Node* ShapeRenderer::createCube(const MaterialInstance *materialInstance) {
-			Node* node = new Node(engine_);
-			RenderableManager::Builder(1)  // 1 geometria
-				.geometry(0, RenderableManager::PrimitiveType::TRIANGLES, vertexBufferCube_, indexBufferCube_, 0, 36)
-				.material(0, materialInstance)
-				.build(*engine_, node->getEntity());
+		Node *ShapeRenderer::createCube(const MaterialInstance *materialInstance) {
+			Node *node = new Node(engine_);
+			RenderableManager::Builder(1) // 1 geometria
+					.geometry(0, RenderableManager::PrimitiveType::TRIANGLES, vertexBufferCube_, indexBufferCube_, 0,
+					          36)
+					.material(0, materialInstance)
+					.build(*engine_, node->getEntity());
 			scene_->addEntity(node->getEntity());
 			return node;
 		}
 
-		Node* ShapeRenderer::createLine(const math::float3 &p1, const math::float3 &p2,
-		                               const MaterialInstance *materialInstance) {
+		Node *ShapeRenderer::createLine(const math::float3 &p1, const math::float3 &p2,
+		                                const MaterialInstance *materialInstance) {
 			// Configurar os dados da linha
 			float vertices[] = {
-				p1.x, p1.y, p1.z, 1.0f, 1.0f, 1.0f, 1.0f,  // Ponto 1 (x, y, z, r, g, b, a)
-				p2.x, p2.y, p2.z, 1.0f, 1.0f, 1.0f, 1.0f   // Ponto 2
+				p1.x, p1.y, p1.z, 1.0f, 1.0f, 1.0f, 1.0f, // Ponto 1 (x, y, z, r, g, b, a)
+				p2.x, p2.y, p2.z, 1.0f, 1.0f, 1.0f, 1.0f // Ponto 2
 			};
 			uint16_t indices[] = {0, 1};
 
 			vertexBufferLine_->setBufferAt(*engine_, 0, VertexBuffer::BufferDescriptor(vertices, sizeof(vertices)));
 			indexBufferLine_->setBuffer(*engine_, IndexBuffer::BufferDescriptor(indices, sizeof(indices)));
 
-			Node* node = new Node(engine_);
+			Node *node = new Node(engine_);
 			RenderableManager::Builder(1)
-				.geometry(0, RenderableManager::PrimitiveType::LINES, vertexBufferLine_, indexBufferLine_, 0, 2)
-				.material(0, materialInstance)
-				.build(*engine_, node->getEntity());
+					.geometry(0, RenderableManager::PrimitiveType::LINES, vertexBufferLine_, indexBufferLine_, 0, 2)
+					.material(0, materialInstance)
+					.build(*engine_, node->getEntity());
 			scene_->addEntity(node->getEntity());
 			return node;
 		}
 
-		Node* ShapeRenderer::createLineList(const std::vector<math::float3> &points,
-		                                   const MaterialInstance *materialInstance) {
+		Node *ShapeRenderer::createLineList(const std::vector<math::float3> &points,
+		                                    const MaterialInstance *materialInstance) {
 			if (points.size() < 2) return nullptr;
 
 			std::vector<float> vertices;
@@ -147,29 +161,33 @@ namespace utils {
 				vertices.push_back(points[i].x);
 				vertices.push_back(points[i].y);
 				vertices.push_back(points[i].z);
-				vertices.push_back(1.0f);  // r
-				vertices.push_back(1.0f);  // g
-				vertices.push_back(1.0f);  // b
-				vertices.push_back(1.0f);  // a
+				vertices.push_back(1.0f); // r
+				vertices.push_back(1.0f); // g
+				vertices.push_back(1.0f); // b
+				vertices.push_back(1.0f); // a
 				if (i > 0) {
 					indices.push_back(i - 1);
 					indices.push_back(i);
 				}
 			}
 
-			vertexBufferLine_->setBufferAt(*engine_, 0, VertexBuffer::BufferDescriptor(vertices.data(), vertices.size() * sizeof(float)));
-			indexBufferLine_->setBuffer(*engine_, IndexBuffer::BufferDescriptor(indices.data(), indices.size() * sizeof(uint16_t)));
+			vertexBufferLine_->setBufferAt(*engine_, 0,
+			                               VertexBuffer::BufferDescriptor(
+				                               vertices.data(), vertices.size() * sizeof(float)));
+			indexBufferLine_->setBuffer(
+				*engine_, IndexBuffer::BufferDescriptor(indices.data(), indices.size() * sizeof(uint16_t)));
 
-			Node* node = new Node(engine_);
+			Node *node = new Node(engine_);
 			RenderableManager::Builder(1)
-				.geometry(0, RenderableManager::PrimitiveType::LINES, vertexBufferLine_, indexBufferLine_, 0, indices.size())
-				.material(0, materialInstance)
-				.build(*engine_, node->getEntity());
+					.geometry(0, RenderableManager::PrimitiveType::LINES, vertexBufferLine_, indexBufferLine_, 0,
+					          indices.size())
+					.material(0, materialInstance)
+					.build(*engine_, node->getEntity());
 			scene_->addEntity(node->getEntity());
 			return node;
 		}
 
-		Node* ShapeRenderer::createLine(const math::float3 &p1, const math::float3 &p2) {
+		Node *ShapeRenderer::createLine(const math::float3 &p1, const math::float3 &p2) {
 			if (!defaultLineMaterial_) {
 				SDL_Log("AVISO: Material padrão para linhas não inicializado. Impossível criar linha de debug.");
 				return nullptr; // Retorna entidade nula
@@ -177,7 +195,36 @@ namespace utils {
 			return createLine(p1, p2, defaultLineMaterial_);
 		}
 
-		Node* ShapeRenderer::createLineList(const std::vector<math::float3> &points) {
+		Node *ShapeRenderer::createTriangle() {
+			auto vb = VertexBuffer::Builder()
+					.vertexCount(3)
+					.bufferCount(1)
+					.attribute(VertexAttribute::POSITION, 0, VertexBuffer::AttributeType::FLOAT2, 0, 12)
+					.attribute(VertexAttribute::COLOR, 0, VertexBuffer::AttributeType::UBYTE4, 8, 12)
+					.normalized(VertexAttribute::COLOR)
+					.build(*engine_);
+			vb->setBufferAt(*engine_, 0,
+			                VertexBuffer::BufferDescriptor(TRIANGLE_VERTICES, 36, nullptr));
+			auto ib = IndexBuffer::Builder()
+					.indexCount(3)
+					.bufferType(IndexBuffer::IndexType::USHORT)
+					.build(*engine_);
+			ib->setBuffer(*engine_,
+			              IndexBuffer::BufferDescriptor(TRIANGLE_INDICES, 6, nullptr));
+
+			Node *node = new Node(engine_);
+			RenderableManager::Builder(1)
+					.boundingBox({{-1, -1, -1}, {1, 1, 1}})
+					.material(0, defaultLineMaterial_)
+					.geometry(0, RenderableManager::PrimitiveType::TRIANGLES, vb, ib, 0, 3)
+					.culling(false)
+					.receiveShadows(false)
+					.castShadows(false)
+					.build(*engine_, node->getEntity());
+			return node;
+		}
+
+		Node *ShapeRenderer::createLineList(const std::vector<math::float3> &points) {
 			if (!defaultLineMaterial_) {
 				SDL_Log(
 					"AVISO: Material padrão para linhas não inicializado. Impossível criar lista de linhas de debug.");
